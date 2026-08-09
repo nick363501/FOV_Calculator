@@ -6,7 +6,7 @@ var SENSORS = {
 
 // ---------- Telescope configurations: display label (equipment name) + actual focal length (mm) used in calculations ----------
 var FOCAL_CONFIGS = [
-  {focal:270, label:"60mm Reducer-270/f/4.5",  color:"#e6194B"},
+  {focal:270, label:"60mm Reducer-270-f/4.5",  color:"#e6194B"},
   {focal:360, label:"60mm Flatter-360-f/6.0",   color:"#f58231"},
   {focal:446, label:"60mm Extender-446-f/7.4", color:"#ffd400"},
   {focal:384, label:"80mm Reducer-384-f/4.8",  color:"#3cb44b"},
