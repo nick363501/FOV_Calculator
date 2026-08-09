@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Deep-Sky FOV Planner</title>
+<link rel="stylesheet" href="style.css">
+<script type="text/javascript" src="https://code.jquery.com/jquery-1.12.1.min.js" charset="utf-8"></script>
+<script type="text/javascript" src="https://aladin.cds.unistra.fr/AladinLite/api/v3/latest/aladin.js" charset="utf-8"></script>
+</head>
+<body>
+<div id="app">
+  <div id="sidebar">
+    <h1>Deep-Sky FOV Planner</h1>
+    <div class="sub">Search a target, pick a camera + focal length(s), see the field of view drawn to scale on real sky imagery.</div>
+
+    <h2>1. Target object</h2>
+    <div class="sub">Quick-pick — Messier</div>
+    <select id="messierSelect"><option value="">— Messier catalog (M1–M110) —</option></select>
+    <div class="sub">Quick-pick — popular NGC / IC</div>
+    <select id="ngcSelect"><option value="">— Popular NGC / IC targets —</option></select>
+    <div class="sub">Or type any designation</div>
+    <div class="row">
+      <input type="text" id="searchInput" placeholder="e.g. M42, NGC 7000, IC 434">
+      <button id="goBtn" style="flex:0 0 70px;">Go</button>
+    </div>
+    <button class="secondary" id="recenterBtn" type="button">Re-center view on target</button>
+    <div id="status">Loading sky map…</div>
+
+    <h2>2. Camera</h2>
+    <label class="cam-option">
+      <input type="radio" name="camera" value="asi585" checked>
+      <div>
+        <div class="nm">ZWO ASI585MC Pro</div>
+        <div class="spec">Sony IMX585, 1/1.2″ · 11.2 × 6.3 mm · 3840×2160 px · 2.9 µm pixels</div>
+      </div>
+    </label>
+    <label class="cam-option">
+      <input type="radio" name="camera" value="asi2600">
+      <div>
+        <div class="nm">ZWO ASI2600MC Pro</div>
+        <div class="spec">Sony IMX571 APS-C · 23.5 × 15.7 mm · 6248×4176 px · 3.76 µm pixels</div>
+      </div>
+    </label>
+
+    <h2>3. Telescope focal length(s)</h2>
+    <div class="sub">Check any combination to compare fields of view</div>
+    <div id="flList"></div>
+
+    <h2>Field of view legend</h2>
+    <table id="legend">
+      <thead><tr><th></th><th>Setup</th><th>FOV</th><th>″/px</th></tr></thead>
+      <tbody id="legendBody"><tr><td colspan="4" style="color:var(--muted)">Check a focal length above</td></tr></tbody>
+    </table>
+
+    <h2>Sky imagery</h2>
+    <select id="surveySelect">
+      <option value="P/DSS2/color">DSS2 color (default)</option>
+      <option value="P/DSS2/red">DSS2 red</option>
+      <option value="P/2MASS/color">2MASS (infrared)</option>
+      <option value="P/allWISE/color">AllWISE (infrared)</option>
+    </select>
+
+    <div class="note">
+      <b>How this works:</b> typing any Messier / NGC / IC designation looks it up live via the CDS Sesame name resolver,
+      so it works for the full catalog — the dropdowns above are just shortcuts for common targets. Sky imagery is
+      real astronomical survey data (DSS), so this needs an internet connection each time it's used, same as
+      Telescopius/Stellarium's online mode.<br><br>
+      This is a self-contained web page (no installer, no backend). To use it later on your iPhone/iPad, just put this
+      whole project folder on any static web host (e.g. a free GitHub Pages or Netlify site) and open that URL in
+      Safari — no changes needed.
+    </div>
+  </div>
+  <div id="mapwrap"><div id="aladin-lite-div"></div><div id="labelLayer"></div></div>
+</div>
+
+<script type="text/javascript" src="app.js"></script>
+</body>
+</html>
