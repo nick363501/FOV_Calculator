@@ -6,11 +6,13 @@ var SENSORS = {
 
 // ---------- Telescope configurations: display label (equipment name) + actual focal length (mm) used in calculations ----------
 var FOCAL_CONFIGS = [
-  {focal:250, label:"Red Cat 51-250-f/4.9",  color:"#e6194B"},
-  {focal:416, label:"ZWO FF65-416-F/6.4",   color:"#f58231"},
-  {focal:312, label:"ZWO FF65 Reducer-313-f/4.8", color:"#ffd400"},
-  {focal:749, label:"ZWO FF107-749-f/7.0",  color:"#3cb44b"},
-  {focal:524, label:"ZWO FF107 Reducer-524-f/4.9", color:"#4363d8"}
+  {focal:270, label:"60mm Reducer-270-f/4.5",  color:"#e6194B"},
+  {focal:360, label:"60mm Flatter-360-f/6.0",   color:"#f58231"},
+  {focal:446, label:"60mm Extender-446-f/7.4", color:"#ffd400"},
+  {focal:384, label:"80mm Reducer-384-f/4.8",  color:"#3cb44b"},
+  {focal:495, label:"80mm Flattner-495-f/6.8", color:"#4363d8"},
+  {focal:600, label:"80mm Extender-600-f/7.l4", color:"#c14bf0"},
+  {focal:1280,label:"C8 Reducer-1280-f/6.3", color:"#e67c19ff"}
 ];
 
 function getFocalConfig(focal){
