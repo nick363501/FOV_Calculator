@@ -221,7 +221,7 @@ function computeTonightBest(lat, lon, date, minAlt){
     });
   });
   results.sort(function(a,b){ return b.peakAlt - a.peakAlt; });
-  return {list: results.slice(0,10), window: win, noon: noon, nextNoon: nextNoon, sunCurve: sunCurve};
+  return {list: results.slice(0,15), window: win, noon: noon, nextNoon: nextNoon, sunCurve: sunCurve};
 }
 
 // ---------- State ----------
