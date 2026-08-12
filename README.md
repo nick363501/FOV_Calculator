@@ -2,6 +2,8 @@
 
 A single self-contained web app for planning astrophotography framing: search a Messier / NGC / IC object, pick a camera and one or more telescope focal lengths, and see the resulting field of view drawn to scale on real sky imagery.
 
+It also includes a "Tonight's Best Deep-Sky Objects" panel: enter (or auto-detect) your observing location and a date, and it ranks the Messier/NGC/IC catalog by peak altitude during astronomical darkness, with an altitude-vs-time graph (rise/transit/set, twilight shading) for whichever object you select — similar to Telescopius' visibility charts. Location is requested via the browser's geolocation prompt on first load; if denied or unavailable, enter latitude/longitude manually — it's remembered locally after that.
+
 ## Files
 
 - `index.html` — page structure

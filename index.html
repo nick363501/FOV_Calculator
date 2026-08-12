@@ -10,6 +10,7 @@
 </head>
 <body>
 <div id="app">
+ <div id="topRow">
   <div id="sidebar">
     <h1>Deep-Sky FOV Planner</h1>
     <div class="sub">Search a target, pick a camera + focal length(s), see the field of view drawn to scale on real sky imagery.</div>
@@ -72,6 +73,35 @@
     </div>
   </div>
   <div id="mapwrap"><div id="aladin-lite-div"></div><div id="labelLayer"></div></div>
+ </div>
+
+ <div id="bestPanel">
+  <div id="bestPanelHeader">
+    <h2 style="margin:0;border:none;padding:0;">Tonight's Best Deep-Sky Objects</h2>
+    <button id="bestToggleBtn" class="secondary" type="button">Hide</button>
+  </div>
+  <div id="bestPanelBody">
+    <div id="locControls">
+      <label>Latitude<input type="number" id="latInput" step="0.0001" placeholder="e.g. 40.7128"></label>
+      <label>Longitude<input type="number" id="lonInput" step="0.0001" placeholder="e.g. -74.0060"></label>
+      <button id="useLocBtn" class="secondary" type="button">Use my location</button>
+      <label>Date<input type="date" id="dateInput"></label>
+      <label>Min altitude<input type="number" id="minAltInput" value="20" min="0" max="80" step="5"></label>
+      <button id="recomputeBtn" type="button">Update</button>
+    </div>
+    <div id="bestStatus" class="sub">Enter your observing location to see tonight's best targets.</div>
+    <div id="bestContent">
+      <table id="bestTable">
+        <thead><tr><th>#</th><th>Object</th><th>Peak Alt</th><th>Rise</th><th>Transit</th><th>Set</th><th>Tonight</th></tr></thead>
+        <tbody id="bestTableBody"></tbody>
+      </table>
+      <div id="altGraphWrap">
+        <div class="sub" id="altGraphTitle">Select a target above to see its altitude curve tonight</div>
+        <svg id="altGraph" viewBox="0 0 720 320" preserveAspectRatio="xMidYMid meet"></svg>
+      </div>
+    </div>
+  </div>
+ </div>
 </div>
 
 <script type="text/javascript" src="app.js"></script>
