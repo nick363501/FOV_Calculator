@@ -47,11 +47,15 @@ table#legend th{color:var(--muted);font-weight:600;}
 .note{font-size:11px;color:var(--muted);line-height:1.5;margin-top:14px;}
 .note b{color:var(--text);}
 
-#bestPanel{flex:0 0 auto;background:var(--panel);border-top:1px solid var(--border);}
-#bestPanelHeader{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;}
+#bestPanel{flex:0 0 auto;background:var(--panel);border-top:1px solid var(--border);display:flex;flex-direction:column;min-height:0;}
+#bestPanelResizeHandle{flex:0 0 auto;height:10px;cursor:ns-resize;display:flex;align-items:center;justify-content:center;touch-action:none;}
+#bestPanelResizeHandle::before{content:"";width:40px;height:4px;border-radius:2px;background:var(--border);}
+#bestPanelResizeHandle:hover::before,#bestPanelResizeHandle.dragging::before{background:var(--accent);}
+#bestPanel.collapsed #bestPanelResizeHandle{display:none;}
+#bestPanelHeader{flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;padding:6px 16px 10px;}
 #bestPanelHeader button{width:auto;padding:6px 14px;margin-bottom:0;}
 #bestPanel.collapsed #bestPanelBody{display:none;}
-#bestPanelBody{padding:0 16px 16px;max-height:48vh;overflow-y:auto;}
+#bestPanelBody{padding:0 16px 16px;height:48vh;min-height:140px;overflow-y:auto;}
 #locControls{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:10px;}
 #locControls label{font-size:11px;color:var(--muted);display:flex;flex-direction:column;gap:4px;}
 #locControls input{width:130px;margin-bottom:0;}

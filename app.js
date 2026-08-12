@@ -637,6 +637,45 @@ function drawAltGraph(obj, isToday){
   svg.appendChild(overlay);
 }
 
+// Lets the user drag the handle at the top of the panel to resize it vertically,
+// remembering the chosen height across sessions.
+function initBestPanelResize(){
+  var handle = document.getElementById('bestPanelResizeHandle');
+  var body = document.getElementById('bestPanelBody');
+  var dragging = false, startY = 0, startHeight = 0;
+
+  function clampHeight(h){
+    var maxH = window.innerHeight * 0.85;
+    return Math.max(140, Math.min(h, maxH));
+  }
+  function onMove(e){
+    if(!dragging) return;
+    body.style.height = clampHeight(startHeight - (e.clientY - startY)) + 'px';
+  }
+  function onUp(){
+    if(!dragging) return;
+    dragging = false;
+    handle.classList.remove('dragging');
+    document.removeEventListener('pointermove', onMove);
+    document.removeEventListener('pointerup', onUp);
+    try{ localStorage.setItem('fov_bestpanel_h', body.style.height); }catch(e){}
+  }
+  handle.addEventListener('pointerdown', function(e){
+    dragging = true;
+    startY = e.clientY;
+    startHeight = body.getBoundingClientRect().height;
+    handle.classList.add('dragging');
+    document.addEventListener('pointermove', onMove);
+    document.addEventListener('pointerup', onUp);
+    e.preventDefault();
+  });
+
+  try{
+    var stored = localStorage.getItem('fov_bestpanel_h');
+    if(stored) body.style.height = stored;
+  }catch(e){}
+}
+
 document.addEventListener('DOMContentLoaded', function(){
   buildMessierSelect();
   buildNgcSelect();
@@ -690,6 +729,7 @@ document.addEventListener('DOMContentLoaded', function(){
     var collapsed = panel.classList.toggle('collapsed');
     this.textContent = collapsed ? 'Show' : 'Hide';
   });
+  initBestPanelResize();
 
   var stored = loadStoredLocation();
   if(stored){
