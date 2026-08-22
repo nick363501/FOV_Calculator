@@ -12,7 +12,8 @@ var FOCAL_CONFIGS = [
   {focal:384, label:"80mm Reducer-384-f/4.8",  color:"#3cb44b"},
   {focal:495, label:"80mm Flattner-495-f/6.8", color:"#4363d8"},
   {focal:600, label:"80mm Extender-600-f/7.l4", color:"#c14bf0"},
-  {focal:1280,label:"C8 Reducer-1280-f/6.3", color:"#e67c19ff"}
+  {focal:1422,label:"Edge Reducer-1280-f/7", color:"#e67c19ff"}
+  {focal:1280,label:"Edge Native-2023-f/10", color:"#198ae6ff"}
 ];
 
 function getFocalConfig(focal){
