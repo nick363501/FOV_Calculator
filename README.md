@@ -36,6 +36,6 @@ No code changes are needed for this.
 - ZWO ASI2600MC Pro — 23.5 × 15.7 mm sensor, 6248×4176 px, 3.76 µm pixels
 
 **Telescope focal lengths (mm)**
-270, 260, 446, 348, 495, 600
+270, 260, 446, 348, 495, 1422, 2032
 
 To change any of this, edit the `SENSORS` or `FOCAL_LENGTHS`/`FL_COLORS` objects near the top of `app.js`.
