@@ -203,14 +203,21 @@ function visibleSegmentInWindow(curve, win, minAlt){
 }
 
 // ---------- Tonight's best deep-sky objects ----------
+// Meridian-transit altitude is cheap (no time sampling needed) and is always the ceiling on
+// an object's peak altitude during the night, so it's used to discard hopeless candidates
+// before paying for a full 10-min-step curve — necessary now that the pool is a few thousand
+// objects rather than a couple hundred.
+function maxPossibleAlt(decDeg, latDeg){ return 90 - Math.abs(latDeg - decDeg); }
+
 function computeTonightBest(lat, lon, date, minAlt){
   var noon = localNoon(date);
   var nextNoon = new Date(noon.getTime() + 24*3600000);
   var sunCurve = sunAltitudeCurve(lat, lon, noon, nextNoon, 10);
   var win = nightWindow(sunCurve);
-  var catalog = MESSIER.concat(NGC_IC);
+  var catalog = (typeof NGC_CATALOG !== 'undefined' && NGC_CATALOG.length) ? NGC_CATALOG : MESSIER.concat(NGC_IC);
   var results = [];
   catalog.forEach(function(row){
+    if(maxPossibleAlt(row[3], lat) < minAlt) return;
     var curve = altitudeCurve(row[2], row[3], lat, lon, noon, nextNoon, 10);
     var peak = peakInWindow(curve, win);
     if(peak < minAlt) return;
