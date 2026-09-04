@@ -106,7 +106,22 @@
  </div>
 </div>
 
+<div id="objModal" class="modal-backdrop" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="objModalTitle">
+    <button id="objModalClose" class="modal-close" type="button" aria-label="Close">&times;</button>
+    <h3 id="objModalTitle">—</h3>
+    <div id="objModalSub" class="sub"></div>
+    <table id="objModalFacts"></table>
+    <div id="objModalGraphWrap">
+      <div class="sub" id="objModalGraphTitle"></div>
+      <svg id="objModalGraph" viewBox="0 0 640 240" preserveAspectRatio="xMidYMid meet"></svg>
+    </div>
+    <div id="objModalNote" class="sub"></div>
+  </div>
+</div>
+
 <script type="text/javascript" src="ngc_catalog.js"></script>
+<script type="text/javascript" src="object_info.js"></script>
 <script type="text/javascript" src="app.js"></script>
 </body>
 </html>

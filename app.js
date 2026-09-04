@@ -363,7 +363,8 @@ function setStatus(msg, cls){
   el.className = cls || '';
 }
 
-function goTo(query){
+function goTo(query, opts){
+  opts = opts || {};
   query = (query||'').trim();
   if(!query || !aladin) return;
   setStatus('Searching for "'+query+'"…', 'searching');
@@ -376,6 +377,7 @@ function goTo(query){
       currentTarget = {ra: ra, dec: dec, name: query};
       setStatus('Showing '+query+'  (RA '+ra.toFixed(4)+'°, Dec '+dec.toFixed(4)+'°)', 'ok');
       redraw();
+      if(opts.popup){ try{ showObjectPopup(query, ra, dec); }catch(e){ console.error('object popup failed', e); } }
     },
     error: function(){
       setStatus('Could not find "'+query+'". Try a designation like M42, NGC 7000, or IC 434.', 'error');
@@ -645,6 +647,217 @@ function drawAltGraph(obj, isToday){
   svg.appendChild(overlay);
 }
 
+// ---------- Object info popup ----------
+// Triggered when a target is chosen from a "1. Target object" dropdown or typed
+// and submitted. Shows catalog facts (from OBJECT_INFO, bundled from OpenNGC) plus
+// a compact rise/transit/set altitude curve for tonight at the observer's location.
+
+// "M42", "m 042", "Messier 42" -> "M42"; "ngc7000" -> "NGC 7000"; "ic 434" -> "IC 434".
+function normalizeDesignation(q){
+  if(!q) return null;
+  var s = String(q).trim().toUpperCase().replace(/\s+/g, ' ');
+  var m = s.match(/^(MESSIER|M|NGC|IC)\s?0*(\d+)\s?([A-Z]*)$/);
+  if(!m) return null;
+  var pfx = (m[1] === 'MESSIER') ? 'M' : m[1];
+  var body = m[2] + (m[3] || '');
+  return pfx === 'M' ? 'M' + body : pfx + ' ' + body;
+}
+
+function lookupObjectInfo(q){
+  if(typeof OBJECT_INFO === 'undefined') return null;
+  var key = normalizeDesignation(q);
+  if(key && Object.prototype.hasOwnProperty.call(OBJECT_INFO, key)) return {key: key, info: OBJECT_INFO[key]};
+  return null;
+}
+
+// designation -> friendly name from the bundled quick-pick arrays (fallback title)
+var DESIG_NAME = (function(){
+  var map = {};
+  function add(rows){ if(rows) rows.forEach(function(r){ if(r && r[0] && !map[r[0]]) map[r[0]] = r[1]; }); }
+  add(typeof MESSIER !== 'undefined' && MESSIER);
+  add(typeof NGC_IC !== 'undefined' && NGC_IC);
+  add(typeof NGC_CATALOG !== 'undefined' && NGC_CATALOG);
+  return map;
+})();
+
+function fmtAngularSize(a, b){
+  if(!a) return null;
+  var deg = a >= 60 || (b && b >= 60);
+  function u(v){ return deg ? (v/60).toFixed(2) + '°' : v.toFixed(v < 10 ? 1 : 0) + '′'; }
+  return (b && Math.abs(b - a) > 0.05) ? u(a) + ' × ' + u(b) : u(a);
+}
+
+function fmtRaDec(ra, dec){
+  var rh = ra/15, hh = Math.floor(rh), mm = Math.floor((rh-hh)*60), ss = Math.round(((rh-hh)*60-mm)*60);
+  if(ss === 60){ ss = 0; mm++; } if(mm === 60){ mm = 0; hh++; }
+  var sign = dec < 0 ? '−' : '+', ad = Math.abs(dec);
+  var dd = Math.floor(ad), dm = Math.round((ad-dd)*60);
+  if(dm === 60){ dm = 0; dd++; }
+  return pad2(hh)+'h '+pad2(mm)+'m '+pad2(ss)+'s  /  '+sign+pad2(dd)+'° '+pad2(dm)+'′';
+}
+
+// Standalone night computation (does not touch the shared "Tonight's Best" bestState).
+function computeObjectNight(ra, dec, lat, lon, date){
+  var noon = localNoon(date);
+  var nextNoon = new Date(noon.getTime() + 24*3600000);
+  var sunCurve = sunAltitudeCurve(lat, lon, noon, nextNoon, 10);
+  var win = nightWindow(sunCurve);
+  var curve = altitudeCurve(ra, dec, lat, lon, noon, nextNoon, 10);
+  var crossings = findCrossings(curve);
+  var peak = win ? peakInWindow(curve, win) : crossings.transitAlt;
+  return {noon: noon, nextNoon: nextNoon, sunCurve: sunCurve, window: win,
+          curve: curve, crossings: crossings, peak: peak};
+}
+
+function drawObjectNightGraph(night, isToday){
+  var svg = document.getElementById('objModalGraph');
+  while(svg.firstChild) svg.removeChild(svg.firstChild);
+
+  var W=640, H=240, mL=36, mR=12, mT=12, mB=26;
+  var plotW = W-mL-mR, plotH = H-mT-mB;
+  var tStart = night.noon.getTime(), tEnd = night.nextNoon.getTime();
+  var altMin=-20, altMax=90;
+  function xPix(t){ return mL + (t-tStart)/(tEnd-tStart)*plotW; }
+  function yPix(alt){ return mT + (altMax-alt)/(altMax-altMin)*plotH; }
+
+  var sc = night.sunCurve;
+  for(var i=0;i<sc.length-1;i++){
+    var a=sc[i], b=sc[i+1], midAlt=(a.alt+b.alt)/2;
+    var op = midAlt>=0 ? 0.16 : midAlt>=-6 ? 0.11 : midAlt>=-12 ? 0.06 : midAlt>=-18 ? 0.02 : 0;
+    if(op===0) continue;
+    var x1=xPix(a.t.getTime()), x2=xPix(b.t.getTime());
+    svg.appendChild(svgEl('rect', {x:x1.toFixed(2), y:mT, width:Math.max(x2-x1,0.5).toFixed(2), height:plotH, fill:'#ffffff', opacity:op}));
+  }
+
+  [0,30,60,90].forEach(function(t){
+    var y = yPix(t);
+    svg.appendChild(svgEl('line', {x1:mL, x2:W-mR, y1:y.toFixed(2), y2:y.toFixed(2), stroke:'var(--border)', 'stroke-width':t===0?1.5:1}));
+    var lbl = svgEl('text', {x:mL-6, y:(y+3).toFixed(2), 'text-anchor':'end', 'font-size':9, fill:'var(--muted)'});
+    lbl.textContent = t+'°'; svg.appendChild(lbl);
+  });
+  for(var tk=tStart; tk<=tEnd; tk+=3*3600000){
+    var x = xPix(tk);
+    svg.appendChild(svgEl('line', {x1:x.toFixed(2), x2:x.toFixed(2), y1:mT, y2:H-mB, stroke:'var(--border)', 'stroke-width':1}));
+    var tl = svgEl('text', {x:x.toFixed(2), y:H-mB+14, 'text-anchor':'middle', 'font-size':9, fill:'var(--muted)'});
+    tl.textContent = pad2(new Date(tk).getHours())+':00'; svg.appendChild(tl);
+  }
+
+  function markX(time, label, color){
+    if(!time) return;
+    var x = xPix(time.getTime());
+    if(x < mL || x > W-mR) return;
+    svg.appendChild(svgEl('line', {x1:x.toFixed(2), x2:x.toFixed(2), y1:mT, y2:H-mB, stroke:color, 'stroke-width':1, 'stroke-dasharray':'3,2'}));
+    var anchor = x < mL+40 ? 'start' : x > W-mR-40 ? 'end' : 'middle';
+    var lx = Math.min(Math.max(x, mL+2), W-mR-2);
+    var tx = svgEl('text', {x:lx.toFixed(2), y:H-mB-5, 'text-anchor':anchor, 'font-size':9, fill:color});
+    tx.textContent = label; svg.appendChild(tx);
+  }
+  markX(night.crossings.rise, 'rise '+fmtTime(night.crossings.rise), 'var(--muted)');
+  markX(night.crossings.set, 'set '+fmtTime(night.crossings.set), 'var(--muted)');
+
+  var pts = night.curve.map(function(p){ return xPix(p.t.getTime()).toFixed(2)+','+yPix(p.alt).toFixed(2); }).join(' ');
+  svg.appendChild(svgEl('polyline', {points:pts, fill:'none', stroke:'var(--accent)', 'stroke-width':2, 'stroke-linecap':'round', 'stroke-linejoin':'round'}));
+
+  var px = xPix(night.crossings.transit.getTime()), py = yPix(night.crossings.transitAlt);
+  svg.appendChild(svgEl('circle', {cx:px.toFixed(2), cy:py.toFixed(2), r:3.5, fill:'var(--accent)'}));
+  var pl = svgEl('text', {x:px.toFixed(2), y:Math.max(py-8, mT+9).toFixed(2), 'text-anchor':'middle', 'font-size':9, fill:'var(--text)'});
+  pl.textContent = Math.round(night.crossings.transitAlt)+'° at '+fmtTime(night.crossings.transit);
+  svg.appendChild(pl);
+
+  if(isToday){
+    var now = Date.now();
+    if(now>=tStart && now<=tEnd){
+      var nx = xPix(now);
+      svg.appendChild(svgEl('line', {x1:nx.toFixed(2), x2:nx.toFixed(2), y1:mT, y2:H-mB, stroke:'var(--ok)', 'stroke-width':1.5, 'stroke-dasharray':'4,3'}));
+      var nl = svgEl('text', {x:nx.toFixed(2), y:mT+9, 'text-anchor':'middle', 'font-size':9, fill:'var(--ok)'});
+      nl.textContent = 'now'; svg.appendChild(nl);
+    }
+  }
+}
+
+function currentObserver(){
+  var lat = parseFloat(document.getElementById('latInput').value);
+  var lon = parseFloat(document.getElementById('lonInput').value);
+  if(isFinite(lat) && isFinite(lon)) return {lat: lat, lon: lon};
+  return null;
+}
+
+function closeObjModal(){ document.getElementById('objModal').hidden = true; }
+
+function showObjectPopup(query, ra, dec){
+  var modal = document.getElementById('objModal');
+  var found = lookupObjectInfo(query);
+  var info = found ? found.info : null;
+  var desig = found ? found.key : (normalizeDesignation(query) || String(query).trim());
+  var name = DESIG_NAME[desig] || (info && info.n) || null;
+
+  document.getElementById('objModalTitle').textContent = name ? (name + '  ·  ' + desig) : desig;
+  var subBits = [];
+  if(info && info.t) subBits.push(info.t);
+  if(info && info.c) subBits.push(info.c);
+  document.getElementById('objModalSub').textContent = subBits.join('  ·  ');
+
+  var rows = [];
+  rows.push(['Designation', desig]);
+  var akaSrc = ((info && info.n && info.n !== name) ? info.n + ', ' : '') + ((info && info.aka) || '');
+  if(akaSrc){
+    var seen = {}, aka = akaSrc.split(',').map(function(s){ return s.trim(); }).filter(function(s){
+      if(!s || s.toUpperCase() === desig.toUpperCase() || s === name) return false;
+      var k = s.toLowerCase(); if(seen[k]) return false; seen[k] = 1; return true;
+    });
+    if(aka.length) rows.push(['Also known as', aka.join(', ')]);
+  }
+  if(info && info.t) rows.push(['Type', info.t]);
+  if(info && info.c) rows.push(['Constellation', info.c]);
+  if(info && typeof info.v === 'number') rows.push(['Magnitude', info.v.toFixed(1) + (info.vb === 'B' ? ' (blue)' : '')]);
+  var sz = info && fmtAngularSize(info.a, info.b);
+  if(sz) rows.push(['Apparent size', sz]);
+  if(info && typeof info.s === 'number') rows.push(['Surface brightness', info.s.toFixed(1) + ' mag/arcsec²']);
+  if(info && info.h) rows.push(['Hubble type', info.h]);
+  if(isFinite(ra) && isFinite(dec)) rows.push(['Coordinates (J2000)', fmtRaDec(ra, dec)]);
+  if(!info) rows.push(['Catalog data', 'No bundled details for this designation.']);
+
+  function esc(s){
+    return String(s).replace(/[&<>"]/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];
+    });
+  }
+  var tbl = document.getElementById('objModalFacts');
+  tbl.innerHTML = rows.map(function(r){
+    return '<tr><td>' + esc(r[0]) + '</td><td>' + esc(r[1]) + '</td></tr>';
+  }).join('');
+
+  var gWrap = document.getElementById('objModalGraphWrap');
+  var gTitle = document.getElementById('objModalGraphTitle');
+  var note = document.getElementById('objModalNote');
+  var obs = currentObserver();
+
+  if(!obs || !isFinite(ra) || !isFinite(dec)){
+    gWrap.hidden = true;
+    note.textContent = obs ? '' : 'Set your observing location in the "Tonight\'s Best" panel below to see the rise/set curve.';
+  } else {
+    gWrap.hidden = false;
+    note.textContent = '';
+    var dateVal = document.getElementById('dateInput').value || todayLocalISO();
+    var isToday = dateVal === todayLocalISO();
+    var night = computeObjectNight(ra, dec, obs.lat, obs.lon, parseDateInputValue(dateVal));
+    var c = night.crossings;
+    var summary;
+    if(c.rise && c.set){
+      summary = 'Rises ' + fmtTime(c.rise) + ', transits ' + fmtTime(c.transit) +
+                ' at ' + Math.round(c.transitAlt) + '°, sets ' + fmtTime(c.set) + '.';
+    } else if(c.transitAlt > 0){
+      summary = 'Circumpolar — always above the horizon. Peak ' + Math.round(c.transitAlt) + '° at ' + fmtTime(c.transit) + '.';
+    } else {
+      summary = 'Does not rise above the horizon on this date from your location.';
+    }
+    gTitle.textContent = (isToday ? 'Tonight — ' : dateVal + ' — ') + summary;
+    drawObjectNightGraph(night, isToday);
+  }
+
+  modal.hidden = false;
+}
+
 // Lets the user drag the handle at the top of the panel to resize it vertically,
 // remembering the chosen height across sessions.
 function initBestPanelResize(){
@@ -690,16 +903,24 @@ document.addEventListener('DOMContentLoaded', function(){
   buildFlList();
 
   document.getElementById('messierSelect').addEventListener('change', function(){
-    if(this.value){ document.getElementById('searchInput').value = this.value; goTo(this.value); }
+    if(this.value){ document.getElementById('searchInput').value = this.value; goTo(this.value, {popup:true}); }
   });
   document.getElementById('ngcSelect').addEventListener('change', function(){
-    if(this.value){ document.getElementById('searchInput').value = this.value; goTo(this.value); }
+    if(this.value){ document.getElementById('searchInput').value = this.value; goTo(this.value, {popup:true}); }
   });
   document.getElementById('goBtn').addEventListener('click', function(){
-    goTo(document.getElementById('searchInput').value);
+    goTo(document.getElementById('searchInput').value, {popup:true});
   });
   document.getElementById('searchInput').addEventListener('keydown', function(e){
-    if(e.key === 'Enter'){ goTo(this.value); }
+    if(e.key === 'Enter'){ goTo(this.value, {popup:true}); }
+  });
+
+  document.getElementById('objModalClose').addEventListener('click', closeObjModal);
+  document.getElementById('objModal').addEventListener('click', function(e){
+    if(e.target === this) closeObjModal();
+  });
+  document.addEventListener('keydown', function(e){
+    if(e.key === 'Escape' && !document.getElementById('objModal').hidden) closeObjModal();
   });
   document.getElementById('recenterBtn').addEventListener('click', function(){
     if(currentTarget) aladin.gotoRaDec(currentTarget.ra, currentTarget.dec);
