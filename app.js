@@ -23,8 +23,8 @@ function getFocalConfig(focal){
 
 // ---------- Messier catalog (id, common name, RA deg J2000, Dec deg J2000) ----------
 // Coordinates are standard published J2000 catalog values, arcminute-level precision.
-// Used for the "tonight's best" ranking/graph only — actual FOV framing still uses the
-// live Sesame resolver (see goTo()) for accuracy.
+// Used for the "tonight's best" ranking/graph and as a search fallback — goTo() prefers
+// the more precise OpenNGC coordinates in NGC_CATALOG, then the live Sesame resolver.
 var MESSIER = [
 ["M1","Crab Nebula",83.625,22.0167],["M2","Globular cluster, Aquarius",323.375,-0.8167],["M3","Globular cluster, Canes Venatici",205.55,28.3833],
 ["M4","Globular cluster, Scorpius",245.9,-26.5333],["M5","Globular cluster, Serpens",229.65,2.0833],["M6","Butterfly Cluster",265.025,-32.2167],
@@ -363,10 +363,41 @@ function setStatus(msg, cls){
   el.className = cls || '';
 }
 
+// Bundled-catalog coordinates for a designation (M/NGC/IC), so searches still work
+// when the CDS Sesame resolver is slow or down.
+function lookupLocalCoords(q){
+  var key = normalizeDesignation(q);
+  if(!key) return null;
+  var lists = [typeof NGC_CATALOG !== 'undefined' && NGC_CATALOG, MESSIER, typeof NGC_IC !== 'undefined' && NGC_IC];
+  for(var i=0;i<lists.length;i++){
+    if(!lists[i]) continue;
+    for(var j=0;j<lists[i].length;j++){
+      var r = lists[i][j];
+      if(r[0] === key) return {ra: r[2], dec: r[3]};
+    }
+  }
+  return null;
+}
+
 function goTo(query, opts){
   opts = opts || {};
   query = (query||'').trim();
   if(!query || !aladin) return;
+
+  function show(ra, dec){
+    currentTarget = {ra: ra, dec: dec, name: query};
+    setStatus('Showing '+query+'  (RA '+ra.toFixed(4)+'°, Dec '+dec.toFixed(4)+'°)', 'ok');
+    redraw();
+    if(opts.popup){ try{ showObjectPopup(query, ra, dec); }catch(e){ console.error('object popup failed', e); } }
+  }
+
+  var local = lookupLocalCoords(query);
+  if(local){
+    aladin.gotoRaDec(local.ra, local.dec);
+    show(local.ra, local.dec);
+    return;
+  }
+
   setStatus('Searching for "'+query+'"…', 'searching');
   aladin.gotoObject(query, {
     success: function(raDec){
@@ -374,10 +405,7 @@ function goTo(query, opts){
       if(Array.isArray(raDec)){ ra = raDec[0]; dec = raDec[1]; }
       else if(raDec && typeof raDec === 'object' && 'ra' in raDec){ ra = raDec.ra; dec = raDec.dec; }
       else { var c = aladin.getRaDec(); ra = c[0]; dec = c[1]; }
-      currentTarget = {ra: ra, dec: dec, name: query};
-      setStatus('Showing '+query+'  (RA '+ra.toFixed(4)+'°, Dec '+dec.toFixed(4)+'°)', 'ok');
-      redraw();
-      if(opts.popup){ try{ showObjectPopup(query, ra, dec); }catch(e){ console.error('object popup failed', e); } }
+      show(ra, dec);
     },
     error: function(){
       setStatus('Could not find "'+query+'". Try a designation like M42, NGC 7000, or IC 434.', 'error');
