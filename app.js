@@ -999,7 +999,7 @@ document.addEventListener('DOMContentLoaded', function(){
 
   A.init.then(function(){
     aladin = A.aladin('#aladin-lite-div', {
-      survey: "P/DSS2/color",
+      survey: "https://skies.esac.esa.int/DSSColor/",
       fov: 3,
       target: "M31",
       showFullscreenControl: true,
